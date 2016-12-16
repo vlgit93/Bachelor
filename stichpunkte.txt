@@ -1,0 +1,81 @@
+################
+### ABSTRACT ###
+################
+
+Zentralspinmodell:
+- beschreibt Dynamik eines Zentralspins
+- WW mit vielen Badspins
+
+Quanteninformationsverarbeitung:
+- Spin des Elektrons koppelt an Kernspins der Nachbarkerne (Hyperfein-WW)
+=> Qubit
+
+- Untersuchung des Langzeitverhaltens des Zentralspins beim dekorrelieren und danach
+- Pulssequenzen auf Zentralspin
+
+##################
+### EINLEITUNG ###
+##################
+
+- Qubits nehmen Zustände 0, 1 und quantenmechanische Superpositionen an
+
+Algorithmen auf Basis von Qubits:
+- Shor-Algorithmus zur Primfaktorzerlegung
+- Suchalgorithmus von Grover
+
+- Vorraussetzung für Realisierung von Qubits:
+-> Zwei-Niveau-System
+-> Eingeschlossenes Eleketron in drei Raumrichtungen => Quantenpunkt
+-> Halbleiterquantenpunkte: GaAs
+
+- Vorraussetzung für Speicherung von Information:
+-> Lange Dekohärenzzeiten des Elektronenspins
+-> Verlust der Inormation entsteht durch WW des Elektrons mit Umgebung
+
+- Spin-Bahn-Kopplung wird im Quantenpunkt stark unterdrückt (Sonst gäbe es Dephasierung)
+=> Relaxation des Elektrons wird daher durch Hyperfein-WW der umliegenden Kernspins verursacht
+
+- Dipol-/Quadrupol-WW zwischen Kernspins kann vernachlässigt werden
+=> Weil erst nach sehr langer Zeit relevant
+
+- bei GaAs Halbleiterquantenpunkten sind N=10^5 Kernspins in WW
+- Elektronenspin <=> Zentralspin
+- Kernspin <=> Badspin
+- Zentralspinmodell eignet sich zur Beschreibung der Hyperfein-WW in Quantenpunkten
+- N=10-1000 zunächst, wegen aufwändiger Ensemblemittelung
+
+(UNTERSCHIED: KLASSISCH/QUANTENMECHANISCH ZENTRALSPINMODELL?)
+
+- Spektraldichte des Systems?
+
+################################
+### PHYSIKALISCHE GRUNDLAGEN ###
+################################
+
+- Zentralspinmodell, Gaudin-Modell
+- Vernachlässigung der WW der Badspins untereinander
+=> Grund: WW-Zeit der Dipol-Dipol-WW ist 1-2 Größenordnungen größer als die der Hyperfein-WW
+
+- Annahme: Badspins sind bei t=0 vollständig unpolarisiert (was bedeutet Polarisation für Spins?) 
+- Variation der Stärke der Kopplungen wegen Inhomogenität der Aufenthaltsw'keit des Elektrons im Quantenpunkt
+
+#######################################
+### Klassische Bewegungsgleichungen ###
+#######################################
+
+- Klassische Betrachtung der Präzessionsbewegung der Spins ist wegen der unterschiedlichen Zeitskalen gerechtfertigt
+
+EINGEFRORENES OVERHAUSERFELD
+- Dynamik des Zentralspins sit wesentlich schneller aufgrund des dominierenden B-Feldes der Badspins
+- Larmor-Frequenz?!
+- Wieso wird das eingefrorene Overhauserfeld als gaußförmig angenommen?!
+- Wie kommt man auf die Formel für zeitabhängige Spinpolarisation?
+
+HIERARCHIE-METHODE
+- Gute Übereinstimmung für Kurzzeitverhalten des Zentralspins
+- Schlechtes Langzeitverhalten, wegen langsamer konvergenz
+- Herleitung aus zeitlicher Änderung des Overhauserfeldes B
+-> Präzession um neues B-Feld B_2 usw. => Iteration
+
+LANCZOS-METHODE
+- 
