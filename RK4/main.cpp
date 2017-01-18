@@ -16,7 +16,7 @@ typedef unsigned int uint;
 	LIST OF PARAMETERS:
 	nos: #of Spins
 	g: parameter that represents the velocity of the decay of the coupling
-	hCentral, hBath: a priori stepsize
+	h, hBath: a priori stepsize
 	givenError: error that sets the precision in the stepsize adaptation
 	s0t0: the central-spin at t=0
 	x: either the overhauserfield or the central-spin (depending on the used function CS/BS)
@@ -27,9 +27,9 @@ typedef unsigned int uint;
 
 namespace{
 /**************************************************************************************/
-double timeOfMeasurement, hCentral, relError;
+double timeOfMeasurement, h, relError;
 uint counter = 0;
-const uint nos = 1+1e3;
+const uint nos = 1+1e2;
 const uint iter = 1e1;
 const uint dim = 100*1e1;
 const double g = 1e-2;
@@ -109,23 +109,42 @@ void pulse(Vector3d s){
 }
 
 //one RK4 time-step
-void timeEvol(double &h, Vector3d &s, Vector3d x, function<Vector3d(Vector3d, Vector3d)> f){
+void timeEvol(){
 
-	s1 = RK4(h, s, x, f);
-	delta = RK4(2.*h, s, x, f) - RK4(h, s1, x, f);
+	sOrg = s0;
+	s1 = RK4(h, s0, B, CS);
+	delta = RK4(2.*h, s0, B, CS) - RK4(h, s1, B, CS);
 	relError = delta.norm()/((h*s1).norm());
 
 	if(relError > givenError){
 		h = stepsize(h, delta, h*s1);
-		s = RK4(h, s, x, f);
+		s0 = RK4(h, s0, B, CS);
 	}
 	if(relError < givenError){
-		s = s1;
+		s0 = s1;
 		h = (stepsize(h, delta, h*s1)<=1e-2) ? stepsize(h, delta, h*s1) : 1e-2;
 	}
 	else{
-		s = s1;
+		s0 = s1;
 	}
+        
+	B << 0, 0, 0;
+	for(uint i = 0; i<nos-1; i++){
+			
+		counter = i;
+
+		si(0) = spinContainer(0, i);
+		si(1) = spinContainer(1, i);
+		si(2) = spinContainer(2, i);
+		
+		si = RK4(h, si, sOrg, BS);
+		B += Ji(i) * si;
+				
+		spinContainer(0, i) = si(0);
+		spinContainer(1, i) = si(1);
+		spinContainer(2, i) = si(2);
+	}
+
 }
 
 int main(){
@@ -152,7 +171,7 @@ int main(){
 		s0 = init();
 		s0t0 = s0;
 		timeOfMeasurement = 0.;
-		hCentral = 1e-3;
+		h = 1e-3;
 		B << 0, 0, 0;
 		
                 for(uint i = 0; i<nos-1; i++){
@@ -177,25 +196,8 @@ int main(){
 					pulse(s0);
 				}
 				*/
-				sOrg = s0;
-				timeEvol(hCentral, s0, B, CS);
-                        	B << 0, 0, 0;
-				for(uint i = 0; i<nos-1; i++){
-				
-					counter = i;
-
-					si(0) = spinContainer(0, i);
-					si(1) = spinContainer(1, i);
-					si(2) = spinContainer(2, i);
-					
-					si = RK4(hCentral, si, sOrg, BS);
-					B += Ji(i) * si;
-				
-					spinContainer(0, i) = si(0);
-					spinContainer(1, i) = si(1);
-					spinContainer(2, i) = si(2);
-				}
-				timeOfMeasurement += hCentral;
+				timeEvol();
+				timeOfMeasurement += h;
 			}
 		}
 		++show_progress;	
