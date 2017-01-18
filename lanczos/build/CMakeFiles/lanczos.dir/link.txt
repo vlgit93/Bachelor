@@ -1,0 +1,1 @@
+g++    -std=c++11 -O3 -lgsl -lgslcblas -lboost_program_options -march=native -g    CMakeFiles/lanczos.dir/lanczos.cpp.o  -o lanczos -rdynamic 

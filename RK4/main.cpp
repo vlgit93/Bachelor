@@ -4,7 +4,8 @@
 #include <fstream>
 #include <Eigen/Dense>
 #include <string>
-#include <omp.h>
+#include <iostream>
+#include <boost/progress.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -21,20 +22,21 @@ typedef unsigned int uint;
 	x: either the overhauserfield or the central-spin (depending on the used function CS/BS)
 	iter: #iterations the simulation calculates
 	dim: dimension of timeC/autoC, equals the maximum time value on the x axis in the plot
+	counter: global position of coupling constant vector Ji
 */
 
 namespace{
 /**************************************************************************************/
-double timeOfMeasurement = 0.;
-double hCentral, hBath, relError; 
-const uint nos = 1e2+1;
-const uint iter = 1e4;
-const uint dim = 10*1e2;
-const double g = 3e-2;
+double timeOfMeasurement, hCentral, relError;
+uint counter = 0;
+const uint nos = 1+1e3;
+const uint iter = 1e1;
+const uint dim = 100*1e1;
+const double g = 1e-2;
 const double givenError = 1e-6;
-Vector3d s0, si, s01, si1, B, s0t0, delta, save;
 Vector3d h0(0, 0, 0);
-VectorXd timeC(dim), autoC(dim);
+Vector3d s0, si, s1, sOrg, B, s0t0, delta;
+VectorXd timeC(dim), autoC0(dim), autoC1(dim), autoC2(dim), Ji(nos-1);
 MatrixXd spinContainer(3, nos-1);
 fstream data;
 /**************************************************************************************/
@@ -43,15 +45,8 @@ fstream data;
 Vector3d RK4(double h, Vector3d yn, Vector3d x, function<Vector3d(Vector3d, Vector3d)> f){
 	
 	Vector3d yn1, k1, k2, k3, k4;
-	
-	if(hCentral==h){
-		save = f(yn, x);
-		k1 = h * save;
-	}
-	else{
-		k1 = h * save;
-	}
-	//k1 = h * f(yn, x);
+
+	k1 = h * f(yn, x);
 	k2 = h * f(yn + 0.5 * k1, x);
 	k3 = h * f(yn + 0.5 * k2, x);
 	k4 = h * f(yn + k3, x);
@@ -79,23 +74,42 @@ Vector3d init(){
 	return spin;
 }
 
-inline double coupling(uint i){
+void expCoupling(){
 
-	return sqrt((1.-exp(-2.*g))/(1.-exp(-2.*g*nos))) * exp(-g*(i-1));
+        static const double A0 = sqrt((1.-exp(-2.*g))/(1.-exp(-2.*g*(nos-1))));
+        for(uint i = 0; i<nos-1; i++){    
+            Ji(i) = A0 * exp(-g*double(i));
+        }
 }
 
+void linCoupling(){
+    
+        static const double A0 = sqrt(6*(nos-1)/(2*(nos-1)*(nos-1)+3*(nos-1)+1));
+        for(uint i = 1; i<nos-1; i++){
+            Ji(i) = A0 * (nos-double(i))/(nos-1);
+        }
+}
+
+//actual eom for central- and bathspin
 Vector3d CS(Vector3d s0, Vector3d B){
 	
 	return B.cross(s0) - h0.cross(s0);
 }
 
-Vector3d BS(Vector3d s0, Vector3d si){
+Vector3d BS(Vector3d si, Vector3d s0){
 
-	return s0.cross(si) - h0.cross(si);
+	return Ji(counter)*(s0.cross(si)) - 0.001*h0.cross(si);
+}
+
+void pulse(Vector3d s){
+	
+	s(0) = s0.norm();
+	s(1) = 0;
+	s(2) = 0;
 }
 
 //one RK4 time-step
-void timeEvol(double &h, Vector3d &s, Vector3d &s1, Vector3d x, function<Vector3d(Vector3d, Vector3d)> f){
+void timeEvol(double &h, Vector3d &s, Vector3d x, function<Vector3d(Vector3d, Vector3d)> f){
 
 	s1 = RK4(h, s, x, f);
 	delta = RK4(2.*h, s, x, f) - RK4(h, s1, x, f);
@@ -116,60 +130,80 @@ void timeEvol(double &h, Vector3d &s, Vector3d &s1, Vector3d x, function<Vector3
 
 int main(){
 
-	data.open("./data/cs_"+to_string(iter)+".dat", fstream::out);
-	data << "#t\t<s0_z(t)*s0_z(0)>" << '\n';
+        expCoupling();
 
-	#pragma omp parallel for
-	for(uint i = 0; i<iter; i++){
+	data.open("./data/cs_iter=1e"+to_string(int(log(iter)/log(10)))+"_N=1e"+to_string(int(log(nos-1)/log(10)))+"_h0z=0"+".dat", fstream::out);
+	//data << "#t\t<s0_x(t)*s0_x(0)>\t<s0_y(t)*s0_y(0)>\t<s0_z(t)*s0_z(0)>" << '\n';
+	data << "#t\t<s0_z(t)*s0_z(0)>" << '\n';
+	
+	cout << "************************\n";
+	cout << "Simulation started with:\n";
+	cout << iter << "\tEnsembles\n";
+	cout << nos-1 << "\tBathspins\n";
+	cout << dim << "\tDatapoints\n";
+	cout << "gamma = " << g << '\n';
+	cout << "Magneticfield: (" << h0(0) << ", " << h0(1) << ", " << h0(2) << ")\n";
+	cout << "************************\n";
+        cout << "\nWriting data in file...\n";
+
+	boost::progress_display show_progress(iter);	
+        for(uint i = 0; i<iter; i++){
 					
 		s0 = init();
 		s0t0 = s0;
 		timeOfMeasurement = 0.;
-		hCentral = 1e-2;
-
-		for(uint i = 0; i<nos-1; i++){
+		hCentral = 1e-3;
+		B << 0, 0, 0;
 		
-			si = init();
-			B += coupling(i+1) * si;
-		
-			spinContainer(0, i) = si(0);
-			spinContainer(1, i) = si(1);
-			spinContainer(2, i) = si(2);
-		}
+                for(uint i = 0; i<nos-1; i++){
+                    
+                    si = init();
+                    spinContainer(0, i) = si(0);
+                    spinContainer(1, i) = si(1);
+                    spinContainer(2, i) = si(2);
+                    B += Ji(i) * si;
+                }
 		
 		for(uint j = 1; j<=timeC.rows(); j++){
 			
 			timeC(j-1) += timeOfMeasurement;
-			autoC(j-1) += s0t0(2)*s0(2);
+			//autoC0(j-1) += s0t0(0)*s0(0);
+			//autoC1(j-1) += s0t0(1)*s0(1);
+			autoC2(j-1) += s0t0(2)*s0(2);
 
-			while(timeOfMeasurement < j*1e-1){
-				timeEvol(hCentral, s0, s01, B, CS);
+			while(timeOfMeasurement<j*1e-2){
 				/*
-				B << 0, 0, 0; 
-				//one RK4 time-step for all bath-spins
+				if(timeOfMeasurement==((j-1)*10)){
+					pulse(s0);
+				}
+				*/
+				sOrg = s0;
+				timeEvol(hCentral, s0, B, CS);
+                        	B << 0, 0, 0;
 				for(uint i = 0; i<nos-1; i++){
-		
+				
+					counter = i;
+
 					si(0) = spinContainer(0, i);
 					si(1) = spinContainer(1, i);
 					si(2) = spinContainer(2, i);
-		
-					timeEvol(hBath, si, si1, s0, BS);
-		
-					B += coupling(i+0) * si;
 					
+					si = RK4(hCentral, si, sOrg, BS);
+					B += Ji(i) * si;
+				
 					spinContainer(0, i) = si(0);
 					spinContainer(1, i) = si(1);
 					spinContainer(2, i) = si(2);
 				}
-				*/
 				timeOfMeasurement += hCentral;
 			}
 		}
+		++show_progress;	
 	}
 
-	#pragma omp parallel for
 	for(uint j = 0; j<timeC.rows(); j++){
-		data << timeC(j)/iter << '\t' << autoC(j)/iter << '\n';
+		//data << timeC(j)/iter << '\t' << autoC0(j)/iter << '\t' << autoC1(j)/iter << '\t' << autoC2(j)/iter << '\n';
+		data << timeC(j)/iter << '\t' << autoC2(j)/iter << '\n';
 	}
 	data.close();
 
