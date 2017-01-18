@@ -131,6 +131,7 @@ int rightside(double t, const double* y0, double* dest, void* params)
     parameter* p             = (parameter*)params;
     static int lvl           = p->level;
     double H                 = p->B;
+    double HBath             = 0; // 0.001 * H;
     static double* alpha     = p->alpha;
     static double* beta      = p->beta;
     static double B_function = p->B_function;
@@ -171,8 +172,8 @@ int rightside(double t, const double* y0, double* dest, void* params)
 			dest[4] = y0[2] * P_temp[0] - y0[0] * P_temp[2];
 			dest[5] = y0[0] * P_temp[1] - y0[1] * P_temp[0];
                         
-                        dest[3] += H * y0[4];
-                        dest[4] -= H * y0[3];
+                        dest[3] += HBath * y0[4];
+                        dest[4] -= HBath * y0[3];
 			
 			for(unsigned i = 2; i < lvl; i++) {
 					i3 = 3 * i;
@@ -184,8 +185,8 @@ int rightside(double t, const double* y0, double* dest, void* params)
 					dest[i3 + 1] = y0[2] * P_temp[0] - y0[0] * P_temp[2];
 					dest[i3 + 2] = y0[0] * P_temp[1] - y0[1] * P_temp[0];
                                         
-                                        dest[i3] += H * y0[i3 -2];
-                                        dest[i3 + 1] -= H * y0[i3 - 3];
+                                        dest[i3] += HBath * y0[i3 + 1];
+                                        dest[i3 + 1] -= HBath * y0[i3];
 			}			
 			
 			P_temp[0] = alpha[lvl - 1] * y0[lvl3] + beta[lvl - 2] * y0[lvl3 - 3];
@@ -196,8 +197,8 @@ int rightside(double t, const double* y0, double* dest, void* params)
 			dest[lvl3 + 1] = y0[2] * P_temp[0] - y0[0] * P_temp[2];
 			dest[lvl3 + 2] = y0[0] * P_temp[1] - y0[1] * P_temp[0];
                         
-                        dest[lvl3] += H * y0[1];
-                        dest[lvl3 + 1] -= H * y0[0];
+                        dest[lvl3] += HBath * y0[lvl3 + 1];
+                        dest[lvl3 + 1] -= HBath * y0[lvl3];
     //}
 
     delete[] y0_temp;
@@ -409,6 +410,10 @@ double hierarchy(const int N, const int max_configs, const int lvl, const int tm
     //	gsl_odeiv2_driver_set_hmax(d,delta);
     //	gsl_odeiv2_driver* d = gsl_odeiv2_driver_alloc_y_new(&ode,gsl_odeiv2_step_rk4,0.002,1e-6,0.)
 
+    double *puls0 = new double[max_configs];
+    double *puls50 = new double[max_configs];
+    double *puls200 = new double[max_configs];
+    double *puls1000 = new double[max_configs];
 
     // ensemble average
     for(int config = 1; config <= max_configs; config++) {
@@ -433,26 +438,13 @@ double hierarchy(const int N, const int max_configs, const int lvl, const int tm
         S0[0] = P[0];
         S0[1] = P[1];
         S0[2] = P[2];
-
-        fstream puls0;
-        fstream puls50;
-        fstream puls200;
-        fstream puls1000;
-        puls0.open("./data/Bz_pulse0.dat", fstream::out);
-        puls50.open("./data/Bz_pulse50.dat", fstream::out);
-        puls200.open("./data/Bz_pulse200.dat", fstream::out);
-        puls1000.open("./data/Bz_pulse1000.dat", fstream::out);
-        puls0 << "#P0\n";
-        puls50 << "#P50\n";
-        puls200 << "#P200\n";
-        puls1000 << "#P1000\n";
         
         // DGLs with RK4
         for(unsigned step = 0; step < datapoints; step++) {
             ti = (step + 1) * delta;
 
             if(step == 0){
-                puls0 << P[5] << '\n';
+                puls0[config - 1] = P[5];
             }
             
             if(pulsestep) {
@@ -461,14 +453,14 @@ double hierarchy(const int N, const int max_configs, const int lvl, const int tm
                     pulse_no=int(step/pulsestep)-1; //first pulse at t=t_pulse
                     //					//vor jedem Puls z-komponente von pseudo-Overhauser (=P[5])
                     switch(pulse_no){
-                        case 50:
-                            puls50 << P[5];
+                        case 49:
+                            puls50[config - 1] = P[5];
                             break;
-                        case 200:
-                            puls200 << P[5];
+                        case 199:
+                            puls200[config - 1] = P[5];
                             break;
-                        case 1000:
-                            puls1000 << P[5];
+                        case 999:
+                            puls1000[config - 1] = P[5];
                     }
                     //binnen
 
@@ -486,12 +478,7 @@ double hierarchy(const int N, const int max_configs, const int lvl, const int tm
                     //					around_z_pulse(P);
                 }
             }
-        
-        puls0.close();
-        puls50.close();
-        puls200.close();
-        puls1000.close();
-
+            
             sxsx = P[0] * S0[0];
             sysy = P[1] * S0[1];
             szsz = P[2] * S0[2];
@@ -530,6 +517,20 @@ double hierarchy(const int N, const int max_configs, const int lvl, const int tm
             }
         }
     }
+
+    fstream PFieldDist;
+    PFieldDist.open("./data/overhauserDist.dat", fstream::out);
+    PFieldDist << "#p0\tp50\tp200\tp1000\n";
+    for(int i = 0; i<max_configs; i++){
+        PFieldDist << puls0[i] << '\t' << puls50[i] << '\t' << puls200[i] << '\t' << puls1000[i] << '\n';
+    }
+    PFieldDist.close();
+    
+    delete[] puls0;
+    delete[] puls50;
+    delete[] puls200;
+    delete[] puls1000;
+
     // Mittelwert bilden:
     for(unsigned i = 0; i < datapoints; i++) {
         sx_mean[i] = sx_mean[i] / max_configs;
