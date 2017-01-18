@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/schering/Documents/Promotion/classical_simulation/lanczos/build",
+  "command": "g++     -std=c++11 -O3 -lgsl -lgslcblas -lboost_program_options -march=native -g   -o CMakeFiles/lanczos.dir/lanczos.cpp.o -c /home/schering/Documents/Promotion/classical_simulation/lanczos/lanczos.cpp",
+  "file": "/home/schering/Documents/Promotion/classical_simulation/lanczos/lanczos.cpp"
+}
+]

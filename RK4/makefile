@@ -1,6 +1,6 @@
 CC = g++
 PY = python
-FLAGS = -std=c++11 -g -o1
+FLAGS = -std=c++11 -g -o3
 
 all: main exec data
 

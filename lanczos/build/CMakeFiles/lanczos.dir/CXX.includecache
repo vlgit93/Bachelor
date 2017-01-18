@@ -1,0 +1,38 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/schering/Documents/Promotion/classical_simulation/lanczos/lanczos.cpp
+float.h
+-
+fstream
+-
+iostream
+-
+boost/program_options.hpp
+-
+cassert
+-
+chrono
+-
+functional
+-
+gsl/gsl_errno.h
+-
+gsl/gsl_odeiv2.h
+-
+iomanip
+-
+math.h
+-
+random
+-
+sstream
+-
+string
+-
+
