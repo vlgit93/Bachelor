@@ -29,16 +29,16 @@ namespace{
 /**************************************************************************************/
 double timeOfMeasurement, h, relError;
 uint counter = 0;
-const uint nos = 1+1e2;
-const uint iter = 1e2;
+const uint nos = 1+1e3;
+const uint iter = 1e3;
 const uint dim = 100*1e1;
-const double g = 3e-2;
+const uint tPulse = 10;
+const double g = 1e-2;
 const double givenError = 1e-6;
-const double tPulse = 10;
-Vector3d hCentral(0, 0, 0);
+Vector3d hCentral(0, 0, 10);
 Vector3d hBath(0, 0, 0);
-Vector3d s0, si, s01, B, s0t0, delta, delta1, delta2, sOrg, senv;
-VectorXd autoCx(dim), autoCy(dim), autoCz(dim), Ji(nos-1);
+Vector3d s0, si, s01, B, s0t0, delta, delta1, delta2, sOrg;
+VectorXd autoCx(dim), autoCy(dim), autoCz(dim), senv(dim), Ji(nos-1);
 MatrixXd spinContainer(3, nos-1);
 fstream data;
 /**************************************************************************************/
@@ -106,8 +106,8 @@ Vector3d BS(Vector3d si, Vector3d s0){
 void pulse(){
 	
 	s0(0) = s0.norm();
-	s0(1) = 0;
-	s0(2) = 0;
+	s0(1) = 0.;
+	s0(2) = 0.;
 }
 
 //one RK4 time-step
@@ -153,15 +153,14 @@ int main(){
         expCoupling();
 	//linCoupling();
 
-	data.open("./data/cs_iter=1e"+to_string(int(log(iter)/log(10)))+"_N=1e"+to_string(int(log(nos-1)/log(10)))+"_h0z=0"+".dat", fstream::out);
-	//data << "#t\t<s0_x(t)*s0_x(0)>\t<s0_y(t)*s0_y(0)>\t<s0_z(t)*s0_z(0)>" << '\n';
+	data.open("./data/cs_iter=1e"+to_string(int(log(iter)/log(10))+1)+"_N=1e"+to_string(int(log(nos-1)/log(10))+1)+"_h0z="+to_string(int(hBath(2)))+".dat", fstream::out);
 	data << "#t\t<s0_z(t)*s0_z(0)>" << '\n';
 
 	cout << "*************************\n";
 	cout << "Simulation started with:\n";
 	cout << iter << "\tEnsembles\n";
 	cout << nos-1 << "\tBathspins\n";
-	cout << iter << "\tDatapoints\n";
+	cout << dim << "\tDatapoints\n";
 	cout << "gamma = " << g << '\n';
 	cout << "*************************\n";
 	cout << "\nWriting data in file...\n";
@@ -186,17 +185,17 @@ int main(){
 		
 		for(uint j = 1; j<=autoCz.rows(); j++){
 			
+			if((j-1)%(tPulse*10)==0){
+				pulse();
+			}
+			
 			//calculating mean of autocorrelationfunction for every component
-			//autoCx(j-1) += s0t0(0)*s0(0)/iter;
-			//autoCy(j-1) += s0t0(1)*s0(1)/iter;
-			autoCz(j-1) += s0t0(2)*s0(2)/iter;
+			autoCx(j-1) += s0t0(0)*s0(0)/iter;
+			autoCy(j-1) += s0t0(0)*s0(1)/iter;
+			//autoCz(j-1) += s0t0(2)*s0(2)/iter;
 
 			while(timeOfMeasurement<j*1e-1){
-				/*
-				if(((j-1)*10)%tPulse==0){
-					pulse(s0);
-				}
-				*/
+
 				timeEvol();
 				timeOfMeasurement += h;
 			}
@@ -204,17 +203,15 @@ int main(){
 		++show_progress;
 	}
 
-	/*
 	//calculating S_env(t)
 	for(uint i = 0; i<nos-1; i++){
 		autoCx(i) *= autoCx(i);
 		autoCy(i) *= autoCy(i);
-#senv(i) = sqrt(autoCx(i) + autoCy(i));
+		senv(i) = sqrt(autoCx(i) + autoCy(i));
 	}
-	*/
 
 	for(uint j = 0; j<autoCz.rows(); j++){
-		data << j*0.1 << '\t' << autoCz(j) << '\n';
+		data << j*0.1 << '\t' << senv(j) << '\n';
 	}
 	data.close();
 
