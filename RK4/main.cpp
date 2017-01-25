@@ -30,14 +30,14 @@ namespace{
 double timeOfMeasurement, h, relError;
 uint counter = 0;
 const uint nos = 1+1e3;
-const uint iter = 1e3;
+const uint iter = 1e4;
 const uint dim = 100*1e1;
 const uint tPulse = 10;
 const double g = 1e-2;
 const double givenError = 1e-6;
 Vector3d hCentral(0, 0, 10);
 Vector3d hBath(0, 0, 0);
-Vector3d s0, si, s01, B, s0t0, delta, delta1, delta2, sOrg;
+Vector3d s0, si, s01, B, s0t0, delta, delta1, delta2, sOrg, fCall;
 VectorXd autoCx(dim), autoCy(dim), autoCz(dim), senv(dim), Ji(nos-1);
 MatrixXd spinContainer(3, nos-1);
 fstream data;
@@ -48,7 +48,7 @@ Vector3d RK4(double h, Vector3d yn, Vector3d x, function<Vector3d(Vector3d, Vect
 	
 	Vector3d yn1, k1, k2, k3, k4;
 
-	k1 = h * f(yn, x);
+	k1 = h * fCall;
 	k2 = h * f(yn + 0.5 * k1, x);
 	k3 = h * f(yn + 0.5 * k2, x);
 	k4 = h * f(yn + k3, x);
@@ -113,9 +113,13 @@ void pulse(){
 //one RK4 time-step
 void timeEvol(){
 
-	sOrg = s0;
+	sOrg = s0; //saving centralspin for new configuration of bathspins
+	fCall = CS(s0, B); //saving a functioncall in RK4 function to reduce execution time
+	
 	s01 = RK4(h, s0, B, CS);
 	delta2 = RK4(2.*h, s0, B, CS);
+	
+	fCall = CS(s01, B);
 	delta1 = RK4(h, s01, B, CS);
 	relError = delta.norm()/((h*s01).norm());
 
@@ -138,7 +142,8 @@ void timeEvol(){
 		si(0) = spinContainer(0, i);
 		si(1) = spinContainer(1, i);
 		si(2) = spinContainer(2, i);
-					
+			
+		fCall = BS(si, sOrg);
 		si = RK4(h, si, sOrg, BS);
 				
 		spinContainer(0, i) = si(0);
@@ -204,14 +209,14 @@ int main(){
 	}
 
 	//calculating S_env(t)
-	for(uint i = 0; i<nos-1; i++){
+	for(uint i = 0; i<autoCz.rows(); i++){
 		autoCx(i) *= autoCx(i);
 		autoCy(i) *= autoCy(i);
 		senv(i) = sqrt(autoCx(i) + autoCy(i));
 	}
 
-	for(uint j = 0; j<autoCz.rows(); j++){
-		data << j*0.1 << '\t' << senv(j) << '\n';
+	for(uint i = 0; i<autoCz.rows(); i++){
+		data << i*0.1 << '\t' << senv(i) << '\n';
 	}
 	data.close();
 
