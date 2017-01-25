@@ -5,13 +5,12 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 #AUTOCORRELATIONFUNCTION z-COMPONENT
-t, sz = np.genfromtxt("./data/cs_iter=1e2_N=1e2_h0z=0.dat", unpack=True)
+t, sz = np.genfromtxt("./data/cs_iter=1e2_N=1e3_h0z=0.dat", unpack=True)
 
 plt.figure(1)
-plt.plot(t, sz, "b-", linewidth=2, label=r"1e2 Durchl\"aufe")
-plt.ylabel("$\langle S_0^x(t)S_0^x(0)\\rangle$")
-plt.xlabel("t$\left[J_q^{-1}\\right]$")
-plt.ylim(0, 0.5)
+plt.plot(t, sz, "b-", linewidth=2, label=r"1e3 Durchl\"aufe")
+plt.ylabel(r"$S_\mathrm{env}(t)$")
+plt.xlabel(r"t$\left[J_q^{-1}\right]$")
 plt.grid()
 plt.legend(loc='best')
 plt.savefig("plot.pdf")

@@ -16,7 +16,7 @@ typedef unsigned int uint;
 	LIST OF PARAMETERS:
 	nos: #of Spins
 	g: parameter that represents the velocity of the decay of the coupling
-	h, hBath: a priori stepsize
+	hCentral, hBath: a priori stepsize
 	givenError: error that sets the precision in the stepsize adaptation
 	s0t0: the central-spin at t=0
 	x: either the overhauserfield or the central-spin (depending on the used function CS/BS)
@@ -30,13 +30,15 @@ namespace{
 double timeOfMeasurement, h, relError;
 uint counter = 0;
 const uint nos = 1+1e2;
-const uint iter = 1e1;
+const uint iter = 1e2;
 const uint dim = 100*1e1;
-const double g = 1e-2;
+const double g = 3e-2;
 const double givenError = 1e-6;
-Vector3d h0(0, 0, 0);
-Vector3d s0, si, s1, sOrg, B, s0t0, delta;
-VectorXd timeC(dim), autoC0(dim), autoC1(dim), autoC2(dim), Ji(nos-1);
+const double tPulse = 10;
+Vector3d hCentral(0, 0, 0);
+Vector3d hBath(0, 0, 0);
+Vector3d s0, si, s01, B, s0t0, delta, delta1, delta2, sOrg, senv;
+VectorXd autoCx(dim), autoCy(dim), autoCz(dim), Ji(nos-1);
 MatrixXd spinContainer(3, nos-1);
 fstream data;
 /**************************************************************************************/
@@ -84,7 +86,7 @@ void expCoupling(){
 
 void linCoupling(){
     
-        static const double A0 = sqrt(6*(nos-1)/(2*(nos-1)*(nos-1)+3*(nos-1)+1));
+        static const double A0 = sqrt(6.*(nos-1)/(2.*(nos-1)*(nos-1)+3.*(nos-1)+1.));
         for(uint i = 1; i<nos-1; i++){
             Ji(i) = A0 * (nos-double(i))/(nos-1);
         }
@@ -93,85 +95,84 @@ void linCoupling(){
 //actual eom for central- and bathspin
 Vector3d CS(Vector3d s0, Vector3d B){
 	
-	return B.cross(s0) - h0.cross(s0);
+	return B.cross(s0) - hCentral.cross(s0);
 }
 
 Vector3d BS(Vector3d si, Vector3d s0){
 
-	return Ji(counter)*(s0.cross(si)) - 0.001*h0.cross(si);
+	return Ji(counter)*(s0.cross(si)) - 0.001*hBath.cross(si);
 }
 
-void pulse(Vector3d s){
+void pulse(){
 	
-	s(0) = s0.norm();
-	s(1) = 0;
-	s(2) = 0;
+	s0(0) = s0.norm();
+	s0(1) = 0;
+	s0(2) = 0;
 }
 
 //one RK4 time-step
 void timeEvol(){
 
 	sOrg = s0;
-	s1 = RK4(h, s0, B, CS);
-	delta = RK4(2.*h, s0, B, CS) - RK4(h, s1, B, CS);
-	relError = delta.norm()/((h*s1).norm());
+	s01 = RK4(h, s0, B, CS);
+	delta2 = RK4(2.*h, s0, B, CS);
+	delta1 = RK4(h, s01, B, CS);
+	relError = delta.norm()/((h*s01).norm());
 
 	if(relError > givenError){
-		h = stepsize(h, delta, h*s1);
+		h = stepsize(h, delta, h*s01);
 		s0 = RK4(h, s0, B, CS);
 	}
 	if(relError < givenError){
-		s0 = s1;
-		h = (stepsize(h, delta, h*s1)<=1e-2) ? stepsize(h, delta, h*s1) : 1e-2;
+		s0 = s01;
+		h = (stepsize(h, delta, h*s01)<=1e-1) ? stepsize(h, delta, h*s01) : 1e-1;
 	}
 	else{
-		s0 = s1;
+		s0 = s01;
 	}
-        
-	B << 0, 0, 0;
+        B << 0, 0, 0;
 	for(uint i = 0; i<nos-1; i++){
-			
+				
 		counter = i;
 
 		si(0) = spinContainer(0, i);
 		si(1) = spinContainer(1, i);
 		si(2) = spinContainer(2, i);
-		
+					
 		si = RK4(h, si, sOrg, BS);
-		B += Ji(i) * si;
 				
 		spinContainer(0, i) = si(0);
 		spinContainer(1, i) = si(1);
 		spinContainer(2, i) = si(2);
 	}
-
+	B = spinContainer * Ji;
 }
 
 int main(){
 
         expCoupling();
+	//linCoupling();
 
 	data.open("./data/cs_iter=1e"+to_string(int(log(iter)/log(10)))+"_N=1e"+to_string(int(log(nos-1)/log(10)))+"_h0z=0"+".dat", fstream::out);
 	//data << "#t\t<s0_x(t)*s0_x(0)>\t<s0_y(t)*s0_y(0)>\t<s0_z(t)*s0_z(0)>" << '\n';
 	data << "#t\t<s0_z(t)*s0_z(0)>" << '\n';
-	
-	cout << "************************\n";
+
+	cout << "*************************\n";
 	cout << "Simulation started with:\n";
 	cout << iter << "\tEnsembles\n";
 	cout << nos-1 << "\tBathspins\n";
-	cout << dim << "\tDatapoints\n";
+	cout << iter << "\tDatapoints\n";
 	cout << "gamma = " << g << '\n';
-	cout << "Magneticfield: (" << h0(0) << ", " << h0(1) << ", " << h0(2) << ")\n";
-	cout << "************************\n";
-        cout << "\nWriting data in file...\n";
+	cout << "*************************\n";
+	cout << "\nWriting data in file...\n";
 
-	boost::progress_display show_progress(iter);	
-        for(uint i = 0; i<iter; i++){
+	boost::progress_display show_progress(iter);
+	for(uint i = 0; i<iter; i++){
 					
 		s0 = init();
 		s0t0 = s0;
 		timeOfMeasurement = 0.;
-		h = 1e-3;
+		h = 1e-2;
 		B << 0, 0, 0;
 		
                 for(uint i = 0; i<nos-1; i++){
@@ -180,19 +181,19 @@ int main(){
                     spinContainer(0, i) = si(0);
                     spinContainer(1, i) = si(1);
                     spinContainer(2, i) = si(2);
-                    B += Ji(i) * si;
                 }
+		B = spinContainer * Ji;
 		
-		for(uint j = 1; j<=timeC.rows(); j++){
+		for(uint j = 1; j<=autoCz.rows(); j++){
 			
-			timeC(j-1) += timeOfMeasurement;
-			//autoC0(j-1) += s0t0(0)*s0(0);
-			//autoC1(j-1) += s0t0(1)*s0(1);
-			autoC2(j-1) += s0t0(2)*s0(2);
+			//calculating mean of autocorrelationfunction for every component
+			//autoCx(j-1) += s0t0(0)*s0(0)/iter;
+			//autoCy(j-1) += s0t0(1)*s0(1)/iter;
+			autoCz(j-1) += s0t0(2)*s0(2)/iter;
 
-			while(timeOfMeasurement<j*1e-2){
+			while(timeOfMeasurement<j*1e-1){
 				/*
-				if(timeOfMeasurement==((j-1)*10)){
+				if(((j-1)*10)%tPulse==0){
 					pulse(s0);
 				}
 				*/
@@ -200,12 +201,20 @@ int main(){
 				timeOfMeasurement += h;
 			}
 		}
-		++show_progress;	
+		++show_progress;
 	}
 
-	for(uint j = 0; j<timeC.rows(); j++){
-		//data << timeC(j)/iter << '\t' << autoC0(j)/iter << '\t' << autoC1(j)/iter << '\t' << autoC2(j)/iter << '\n';
-		data << timeC(j)/iter << '\t' << autoC2(j)/iter << '\n';
+	/*
+	//calculating S_env(t)
+	for(uint i = 0; i<nos-1; i++){
+		autoCx(i) *= autoCx(i);
+		autoCy(i) *= autoCy(i);
+#senv(i) = sqrt(autoCx(i) + autoCy(i));
+	}
+	*/
+
+	for(uint j = 0; j<autoCz.rows(); j++){
+		data << j*0.1 << '\t' << autoCz(j) << '\n';
 	}
 	data.close();
 
