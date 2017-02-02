@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+p0, p50, p200, p1000 = np.genfromtxt("./3_noB.overhauserDist.dat", unpack=True)
+p_2_0, p_2_50, p_2_200, p_2_1000 = np.genfromtxt("./6.overhauserDist.dat", unpack=True)
+
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
+plt.figure(1)
+f, axarr = plt.subplots(2, sharex=True)
+axarr[0].hist(p0, bins=401)
+axarr[1].hist(p_2_0, bins=401)
+plt.xlabel(r"$B^z$[$J_q$]")
+plt.ylabel("Anzahl")
+axarr[0].grid()
+axarr[1].grid()
+plt.savefig("./plots/10_10_1.pdf")
+
+plt.figure(2)
+f, axarr = plt.subplots(2, sharex=True)
+axarr[0].hist(p50, bins=401)
+axarr[1].hist(p_2_50, bins=401)
+plt.xlabel(r"$B^z$[$J_q$]")
+plt.ylabel("Anzahl")
+axarr[0].grid()
+axarr[1].grid()
+plt.savefig("./plots/10_10_50.pdf")
+
+plt.figure(3)
+f, axarr = plt.subplots(2, sharex=True)
+axarr[0].hist(p200, bins=401)
+axarr[1].hist(p_2_200, bins=401)
+plt.xlabel(r"$B^z$[$J_q$]")
+plt.ylabel("Anzahl")
+axarr[0].grid()
+axarr[1].grid()
+plt.savefig("./plots/10_10_200.pdf")
+
+plt.figure(4)
+f, axarr = plt.subplots(2, sharex=True)
+axarr[0].hist(p1000, bins=401)
+axarr[1].hist(p_2_1000, bins=401)
+plt.xlabel(r"$B^z$[$J_q$]")
+plt.ylabel("Anzahl")
+axarr[0].grid()
+axarr[1].grid()
+plt.savefig("./plots/10_10_1000.pdf")
