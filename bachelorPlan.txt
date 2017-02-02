@@ -1,0 +1,7 @@
+1. REFERENZEN
+- Master-Arbeit lesen/nacharbeiten/verstehen
+- Uhrig-Paper lesen/verstehen
+
+2. PROGRAMMIEREN
+- RK4 mit Schrittweitenanpassung allgemein für d-Dimensionen
+- Anpassung an das Zentralspinmodell
